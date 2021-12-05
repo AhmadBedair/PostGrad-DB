@@ -1,7 +1,7 @@
 create database postgradDB;
 use postgradDB;
 
-
+--User or Users
 create table Users
 (
     id int primary key identity,
@@ -33,15 +33,14 @@ create table Student
 create table GucianStudent
 (
     id int primary key,
-    undergrad_id int unique,
-    foreign key (id) references Student on delete cascade on update cascade
+    undergrad_id varchar(10) unique,
+    foreign key (id) references Users on delete cascade on update cascade
 );
 
 create table NonGucianStudent
 (
     id int primary key,
-    undergrad_id int unique,
-    foreign key (id) references Student on delete cascade on update cascade
+    foreign key (id) references Users on delete cascade on update cascade
 );
 
 create table GucStudentPhoneNumber
@@ -70,12 +69,13 @@ create table Course
 
 create table Supervisor
 (
+
     id int primary key,
-    first_name varchar(20) not null,
-    last_name varchar(20) not null,
+    name varchar(20) not null,
     faculty varchar(20) not null,
     address varchar(50) not null,
     foreign key(id) references Users
+    --why is id in schema not a foriegn key???#note
 );
 
 create table Thesis
@@ -90,7 +90,7 @@ create table Thesis
     years as (endDate - startDate),
     grade decimal not null,
     payment_id int,
-    Number_OF_Extensions int not null,
+    noExtension int not null,
     foreign key (payment_id) references Payment on delete cascade on update cascade
 );
 
@@ -109,7 +109,8 @@ create table Payment
     id int primary key identity,
     amount decimal,
     no_installments int,
-    fund_percentage decimal 
+    fund_percentage decimal,
+    CHECK (fund_percentage>=0 AND fund_percentage<=100)
 );
 
 create table Examiner
@@ -164,7 +165,7 @@ create table NonGUCianProgressReport
     primary key(sid, no),
     check(eval>=0 and eval<=3),
     foreign key(thesis_serial_number) references Thesis on delete cascade on update cascade,
-    foreign key (sid) references GucianStudent on delete cascade on update cascade,
+    foreign key (sid) references NonGucianStudent on delete cascade on update cascade,
     foreign key (supid) references Supervisor on delete cascade on update cascade
 );
 
@@ -238,10 +239,10 @@ create table ExaminerEvaluateDefense
 create table ThesisHasPublication
 (
     serial_number varchar(30),
-    subid int,
-    primary key(serial_number, subid),
+    pubid int,
+    primary key(serial_number, pubid),
     foreign key(serial_number) references Thesis on delete cascade on update cascade,
-    foreign key(subid) references Publication on delete cascade on update cascade
+    foreign key(pubid) references Publication on delete cascade on update cascade
 
 );
 
