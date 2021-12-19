@@ -1,27 +1,28 @@
+use PostGradDB
+
+go
+
 -- StudentRegister
 create proc StudentRegister 
 @first_name varchar(20), @last_name varchar(20), @password varchar(20), @faculty varchar(20),
-@Gucian bit, @email varchar(50), @address varchar(10)
+@Gucian bit, @email varchar(50), @address varchar(10), @GPA decimal(3,2), @type varchar(20), @undergradID varchar(10)
 
 as
 
-    if not exists(select email from Users where email=@email)
+    if not exists(select email from PostGradUser where email=@email)
         BEGIN
 
             
-            insert into Users (email, password)
+            insert into PostGradUser (email, password)
             values (@email, @password);
 
             declare @sid int;
-            Select @sid=max(id) from Users;
-
-            insert into Student (id, first_name, last_name, faculty, address)
-            values (@sid, @first_name, @last_name, @faculty, @address);
+            Select @sid=max(id) from PostGradUser;
 
             if @Gucian = 1
-                insert into GucianStudent (id) values (@sid);
+                insert into GucianStudent (id, first_name, last_name, type,faculty, address, GPA, undergradID) values (@sid, @first_name, @last_name, @type,@faculty, @address, @GPA, @undergradID);
             else 
-                insert into NonGucianStudent(id) values (@sid);
+                insert into NonGucianStudent(id, first_name, last_name, type,faculty, address, GPA) values (@sid, @first_name, @last_name, @type,@faculty, @address, @GPA);
 
         end
     else 
@@ -29,26 +30,25 @@ as
             print 'Email already exists';
         end
 
-go;
+go
 
 
 -- SupervisorRegister
 create proc SupervisorRegister
-@first_name varchar(20), @last_name varchar(20), @password varchar(20), @faculty varchar(20),
-@email varchar(50), @address varchar(10)
-
+@name varchar(20), @password varchar(20), @faculty varchar(20),
+@email varchar(50)
 as
     begin
-        if not exists(select email from Users where email = @email)
+        if not exists(select email from PostGradUser where email = @email)
             BEGIN
 
-                insert into Users (email, password) values (@email, @password);
+                insert into PostGradUser (email, password) values (@email, @password);
                 
-                declare @sid int;
-                Select @sid=max(id) from Users;
+                declare @supid int;
+                Select @supid=max(id) from PostGradUser;
 
-                insert into Supervisor(id, first_name, last_name, faculty, address)
-                values(@sid, @first_name, @last_name, @faculty, @address);
+                insert into Supervisor(id,name, faculty)
+                values(@supid, @name, @faculty);
 
             end
         else
@@ -56,7 +56,7 @@ as
                 print 'Email already exists';
             end
     end
-go;
+go
 
 
 
@@ -64,7 +64,7 @@ go;
 create proc userLogin
 @id int, @password varchar(20), @Success bit output
 as 
-    if exists (select * from Users where id=@id and password=@password)
+    if exists (select * from PostGradUser where id=@id and password=@password)
         BEGIN
             set @Success = 1;
         end
@@ -73,7 +73,7 @@ as
             set @Success = 0;
         end
 
-go;
+go
 
 
 
@@ -82,7 +82,7 @@ create proc addMobile
 @id int, @mobile_number varchar(20)
 as
 
-    if not exists(select id from Users where id=@id)
+    if not exists(select id from PostGradUser where id=@id)
         BEGIN
             print 'ID IS NOT FOUND';
         end
@@ -91,22 +91,36 @@ as
 
             if exists (select * from GucianStudent where id=@id)
                 BEGIN
-                    if not exists (select * from GucStudentPhoneNumber where phone_number=@mobile_number)
-                        insert into GucStudentPhoneNumber (id, phone_number) values (@id, @mobile_number);
+                    if not exists (select * from GucStudentPhoneNumber where phone=@mobile_number)
+                        BEGIN
+                            if not exists (select * from NonGucStudentPhoneNumber where phone=@mobile_number)
+                                insert into GucStudentPhoneNumber (id, phone) values (@id, @mobile_number);
+                            ELSE
+                                print 'Mobile number already exists';
+                        END
+                        
                     else
                         print 'phone number already exists';
                 end
-            else if exists (select * from NonGucianStudent where id=@id)
-                BEGIN
-                    if not exists (select * from NonGucStudentPhoneNumber where phone_number=@mobile_number)
-                        insert into NonGucStudentPhoneNumber (phone_number) values (@mobile_number);
-                    else
-                        print 'phone number already exists';
-                end
+            else 
+                if exists (select * from NonGucianStudent where id=@id)
+                    BEGIN
+                        if not exists (select * from NonGucStudentPhoneNumber where phone=@mobile_number)
+                            BEGIN
+                            if not exists (select * from GucStudentPhoneNumber where phone=@mobile_number)
+                                insert into NonGucStudentPhoneNumber (id, phone) values (@id, @mobile_number);
+                            else 
+                                print 'phone number already exists';
+                            END
+                        else
+                            print 'phone number already exists';
+                    end
+                else
+                    print 'ID IS NOT FOUND';
         end    
+    
 
-
-go;
+go
 
 
 -- AdminListSup
@@ -116,7 +130,7 @@ as
         select * from Supervisor;
     end
 
-go;
+go
 
 
 
@@ -134,7 +148,7 @@ as
             print 'ID NOT FOUND';
         end
 
-go;
+go
 
 
 -- AdminViewAllTheses
@@ -144,7 +158,7 @@ as
         select * from Thesis;
     end
 
-go;
+go
 
 -- AdminViewOnGoingTheses
 create proc AdminViewOnGoingTheses
@@ -156,7 +170,7 @@ as
         select @thesesCount=count(*) from Thesis where @date >= startDate and @date < endDate;
     end
 
-go;
+go
 
 -- AdminViewStudentThesisBySupervisor
 create proc AdminViewStudentThesisBySupervisor
@@ -164,48 +178,49 @@ as
     begin
         select sup.name, Thesis.title, s.first_name, s.last_name
         from Supervisor sup inner join GUCianProgressReport gpr on (sup.id=gpr.supid)
-        inner join Thesis on (gpr.thesis_serial_number=Thesis.serial_Number) 
+        inner join Thesis on (gpr.thesisSerialNumber=Thesis.serialNumber) 
         inner join GucianStudent s on (gpr.sid=s.id)
         
         union
 
         select sup.name, Thesis.title, s.first_name, s.last_name
         from Supervisor sup inner join NonGUCianProgressReport ngpr on (sup.id=ngpr.supid)
-        inner join Thesis on (ngpr.thesis_serial_number=Thesis.serial_Number) 
+        inner join Thesis on (ngpr.thesisSerialNumber=Thesis.serialNumber) 
         inner join NonGucianStudent s on (ngpr.sid=s.id);
     end
 
 
-go;
+go
 
 -- AdminListNonGucianCourse
 create proc AdminListNonGucianCourse
 @courseID int
 as
     BEGIN
-        select s.first_name, s.last_name, c.code, rel.grade
+        select ngs.first_name, ngs.last_name, c.code, rel.grade
         from Course c inner join NonGucianStudentTakeCourse rel on(rel.cid=c.id)
         inner join NonGucianStudent ngs on (rel.sid=ngs.id)
-        inner join Student s on (ngs.id=s.id)
         where c.id=@courseID;
     end
 
-go;
+go
 
 -- AdminUpdateExtension
 create proc AdminUpdateExtension
-@thesis_serial_number int
+@ThesisSerialNo int
 as
     BEGIN
-        if exists (select * from Thesis where serial_Number=@thesis_serial_number)
+        if exists (select * from Thesis where serialNumber=@ThesisSerialNo)
             BEGIN
-                update Thesis set Number_OF_Extensions=1 where serial_Number=@thesis_serial_number;
+                declare @old int
+                select @old=noExtension from Thesis where serialNumber=@ThesisSerialNo
+                update Thesis set noExtension=@old+1 where serialNumber=@ThesisSerialNo
             end
         else
             print 'Not found';
     end
 
-go;
+go
 
 -- AdminIssueThesisPayment
 create proc AdminIssueThesisPayment
@@ -215,15 +230,15 @@ create proc AdminIssueThesisPayment
 AS
     BEGIN
 
-        if exists (select * from Thesis where serial_Number=@ThesisSerialNo)
+        if exists (select * from Thesis where serialNumber=@ThesisSerialNo)
             BEGIN
-                insert into Payment (amount, no_installments, fund_percentage)
+                insert into Payment (amount, no_Installments, fundPercentage)
                 values (@amount, @noOfInstallments, @fundPercentage);
 
                 declare @pid int;
                 Select @pid=max(id) from Payment;
 
-                UPDATE Thesis SET payment_id=@pid where serial_Number=@ThesisSerialNo;
+                UPDATE Thesis SET payment_id=@pid where serialNumber=@ThesisSerialNo;
 
             end
         else
@@ -231,43 +246,68 @@ AS
     end
 
 
-go;
+go
 
 -- AdminViewStudentProfile
 create proc AdminViewStudentProfile
 @sid int
 as
     begin
-        if exists (select * from Student where id=@sid)
+        if exists (select * from GucianStudent where id=@sid)
             BEGIN
-                select * from Student where id=@sid;
+                select * from GucianStudent where id=@sid;
             end
-        else
-            BEGIN
-                print 'ID NOT FOUND';
-            end
+        else 
+            if exists (select * from NonGucianStudent where id=@sid)
+                BEGIN
+                    select * from NonGucianStudent where id=@sid;
+                end
+            else
+                print 'Student not found';
+            
     end
-go;
+go
+
 
 
 -- AdminIssueInstallPayment
 create proc AdminIssueInstallPayment
+@paymentID int, @InstallStartDate date
 as
 
-go;
+    if exists (select * from Payment where id=@paymentID)
+        BEGIN
+            DECLARE @numOFInstallments int;
+            select @numOFInstallments=no_Installments from Payment where id=@paymentID;
+
+            DECLARE @Counter INT
+            DECLARE @CurrentDate datetime
+            SET @Counter=0
+            while(@Counter<@numOFInstallments)
+                BEGIN
+                    set @CurrentDate=dateadd(month, (@Counter)*6, @InstallStartDate);
+                    insert into Installment (date, paymentId)
+                    values (@CurrentDate, @paymentID);
+                    SET @Counter=@Counter+1;
+                END
+        end
+    else
+        print 'Payment not found';
+
+go
 
 -- AdminListAcceptPublication
 create proc AdminListAcceptPublication
 as 
     BEGIN
-        select p.title
-        from Publication p inner join ThesisHasPublication rel on(p.id=rel.subid)
-        inner join Thesis t on (rel.serial_number=t.serial_Number)
+        select p.title as PublicationTitle, t.title ThesisTitle, t.serialNumber
+        from Publication p inner join ThesisHasPublication rel on(p.id=rel.pubid)
+        inner join Thesis t on (rel.serialNo=t.serialNumber)
         where p.accepted=1
-        group by t.serial_Number;
+        group by t.serialNumber, p.title, t.title
     end
 
-go;
+go
 
 -- AddCourse
 create proc AddCourse
@@ -276,53 +316,70 @@ as
     begin
         if not exists (select * from Course where code=@courseCode)
             BEGIN
-                insert into Course (code, creditHours, fee) values (@courseCode, @creditHours, @fee);
+                insert into Course (code, creditHours, fees) values (@courseCode, @creditHours, @fee);
             end
         else
             print 'Course already exists';
     
     end
 
-go;
+go
 
 -- linkCourseStudent
 create proc linkCourseStudent
 @courseID int, @studentID INT
 as
+    BEGIN
+        if exists (select * from NonGucianStudent where id=@studentID)
+            if not exists (select * from NonGucianStudentTakeCourse where cid=@courseID and sid=@studentID)
+                insert into NonGucianStudentTakeCourse (cid, sid) values (@courseID, @studentID);
+            ELSE
+                print 'The record already exists'
+        else 
+            print 'Stduent Not Exists'
+    end
 
-go;
+go
 
 -- addStudentCourseGrade
 create proc addStudentCourseGrade
+@courseID int, @studentID int, @grade decimal
 as
+    BEGIN
+        if exists(select * from NonGucianStudentTakeCourse where sid=@studentID and cid=@courseID)
+            BEGIN
+                update NonGucianStudentTakeCourse set grade=@grade where sid=@studentID and cid=@courseID;
+            end
+        else
+            print 'Student not found';
+    end
 
-
-go;
+go
 
 -- ViewExamSupDefense
 create proc ViewExamSupDefense
 @defenseDate datetime
 as
     begin
-        select sup.first_name, sup.last_name, e.name
+        select sup.name as SuperVisorName, e.name as ExaminerName
         from ExaminerEvaluateDefense eed inner join NonGUCianProgressReport ngpr
-        on(eed.serial_number=ngpr.thesis_serial_number)
+        on(eed.serialNo=ngpr.thesisSerialNumber)
         inner join Supervisor sup on(ngpr.supid=sup.id)
         inner join Examiner e on (e.id=eed.examinerid)
         where eed.date = @defenseDate
 
         union
 
-        select sup.first_name, sup.last_name, e.name
+        select sup.name as SuperVisorName, e.name as ExaminerName
         from ExaminerEvaluateDefense eed inner join GUCianProgressReport gpr
-        on(eed.serial_number=gpr.thesis_serial_number)
+        on(eed.serialNo=gpr.thesisSerialNumber)
         inner join Supervisor sup on(gpr.supid=sup.id)
         inner join Examiner e on (e.id=eed.examinerid)
         where eed.date = @defenseDate;
 
     end
 
-go;
+go
 
 
 -- Add grade for a defense
@@ -348,7 +405,7 @@ else
 --    select @Gid=sid from GUCianStudentRegisterThesis where serial_no=@ThesisSerialNo
 --   insert into GUCianProgressReport (@Gid,date,
 
-go;
+go
 
 CREATE PROC viewMyProfile 
 @studentId int
@@ -394,7 +451,7 @@ end
 else 
     print'This Student Does not Exist'
 
-go;
+go
 
 --As a Gucian graduate, add my undergarduate ID.
 CREATE proc addUndergradID 
@@ -412,7 +469,7 @@ print'ID Does Not Exist'
 
 go
 
--- As a nonGucian student, view my courses’ grades
+-- As a nonGucian student, view my coursesï¿½ grades
 CREATE PROC ViewCoursesGrades
 @studentID int
 AS
@@ -435,7 +492,7 @@ where @studentID = ng.sid
 end
 else print 'id not exist for non-Gucian'
 
-go;
+go
 
 
 CREATE PROC ViewThesisPaymentsInstall 
@@ -457,7 +514,7 @@ where @studentID = g.sid
 end
 end
 
-go;
+go
 
 
 --NOTE the outer joins in NonGucians part!!!
@@ -480,7 +537,7 @@ where @studentID = ng.sid and i.date> current_timeStamp
 end
 end
 
-go;
+go
 
 CREATE PROC ViewMissedInstallments 
 @studentid int
@@ -501,7 +558,7 @@ where @studentID = ng.sid and i.done=0 and i.date> CURRENT_TIMESTAMP
 end
 end
 
-go;
+go
 
 
 CREATE PROC AddProgressReport
@@ -527,7 +584,7 @@ else
 print 'wrong serial number';
 end
 
-go;
+go
 
 CREATE PROC FillProgressReport
 @thesisSerialNo int,
@@ -541,7 +598,7 @@ else if exists (select * from NonGUCianProgressReport ng where ng.no=@progressRe
 UPDATE NonGUCianProgressReport set thesisSerialNumber=@thesisSerialNo , state=@state, description=@description where no=@progressReportNo
 else print 'progress report not exist'
 
-go;
+go
 
 --View my progress report(s) evaluations.
 CREATE PROC ViewEvalProgressReport
@@ -550,7 +607,7 @@ CREATE PROC ViewEvalProgressReport
 AS
 -------------------------------tbc
 
-go;
+go
 
 -- add publication
 CREATE PROC addPublication
@@ -562,7 +619,7 @@ CREATE PROC addPublication
 AS
 insert into Publication(title, date, place,accepted,host) values(@title,@pubDate,@place,@accepted,@host)
 
-go;
+go
 
 
 --Link publication to my thesis

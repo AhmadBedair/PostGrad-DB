@@ -1,12 +1,13 @@
-create database postgradDB;
+CREATE DATABASE PostGradDB;
+use PostGradDB
 
-
+GO
 
 create table PostGradUser
 (
      id int primary key identity,
-    email varchar(10) not null unique,
-    password varchar(10) not null,
+    email varchar(50) not null unique,
+    password varchar(50) not null,
 );
 
 
@@ -20,33 +21,33 @@ create table Admin
 create table GucianStudent
 (
     id int primary key,
-    firstName varchar(10) not null,
-    lastName varchar(10) not null,
-    type varchar(10) not null,
+    first_name varchar(20) not null,
+    last_name varchar(20) not null,
+    type varchar(20) not null,
     faculty varchar(20) not null,
-    address varchar(10) not null,
-    GPA decimal(3,2) not null,
-    undergradID varchar(10) not null,
+    address varchar(50) not null,
+    GPA decimal(4,3) not null,
+    undergradID int not null,
     foreign key(id) references PostGradUser on delete cascade on update cascade
 );
+
 
 
 
 create table NonGucianStudent
 (
     id int primary key,
-
     first_name varchar(20) not null,
     last_name varchar(20) not null,
     type varchar(20) not null,
     faculty varchar(20) not null,
-    address varchar(50) not null,
-    GPA decimal(3,2) not null,
+    address varchar(80) not null,
+    GPA decimal(4,3) not null,
     foreign key(id) references PostGradUser on delete cascade on update cascade
 );
 
 
-create table GUCStudentPhoneNumber
+create table GucStudentPhoneNumber
 (
     id int,
     phone varchar(20),
@@ -54,7 +55,7 @@ create table GUCStudentPhoneNumber
     foreign key (id) references GucianStudent on delete cascade on update cascade
 );
 
-create table NonGUCStudentPhoneNumber
+create table NonGucStudentPhoneNumber
 (
     id int,
     phone varchar(20),
@@ -65,29 +66,17 @@ create table NonGUCStudentPhoneNumber
 create table Course
 (
     id int primary key identity,
-    fees decimal not null,
+    fees decimal(11, 5) not null,
     creditHours int not null,
     code varchar(20) unique not null
 );
 
 create table Supervisor
 (
-
     id int primary key,                              
     name varchar(20) not null,
     faculty varchar(20) not null,
     foreign key(id) references PostGradUser
-);
-
-
-create table Payment
-(
-    id int primary key identity,
-    amount decimal ,
-    no_Installments int ,
-    fundPercentage decimal, 
-    CHECK (fundPercentage>=0 AND fundPercentage<=100)
-
 );
 
 create table Thesis
@@ -100,8 +89,8 @@ create table Thesis
     endDate datetime not null,
     defenseDate datetime not null,
     years as (endDate - startDate),
-    grade decimal not null,
-    payment_id int ,
+    grade decimal(10,5) not null,
+    payment_id int,
     noExtension int not null,
     foreign key (payment_id) references Payment on delete cascade on update cascade
 );
@@ -116,6 +105,13 @@ create table Publication
     host varchar(30) not null
 );
 
+create table Payment
+(
+    id int primary key identity,
+    amount decimal(11, 5) not null,
+    no_Installments int not null,
+    fundPercentage decimal(6, 3) not null
+);
 
 
 create table Examiner
@@ -133,7 +129,7 @@ create table Defense
     serialNumber int,
     date datetime not null,
     location varchar(50) not null,
-    grade decimal not null,
+    grade decimal(10, 5) not null,
     primary key(serialNumber, date),
     foreign key(serialNumber) references Thesis on delete cascade on update cascade
 );
@@ -150,7 +146,6 @@ create table GUCianProgressReport
     state varchar(20) not null,
     thesisSerialNumber int,
     supid int,
-    description varchar(200),
     primary key(sid,no),
     foreign key(thesisSerialNumber) references Thesis on delete cascade on update cascade,
     foreign key (sid) references GucianStudent on delete cascade on update cascade,
@@ -168,9 +163,7 @@ create table NonGUCianProgressReport
     state varchar(20) not null,
     thesisSerialNumber int,
     supid int,
-    description varchar (200),
     primary key(sid,no),
-    check(eval>=0 and eval<=3),
     foreign key(thesisSerialNumber) references Thesis on delete cascade on update cascade,
     foreign key (sid) references NonGucianStudent on delete cascade on update cascade,
     foreign key (supid) references Supervisor on delete cascade on update cascade
@@ -180,8 +173,8 @@ create table Installment
 (
     date datetime,
     paymentId int,
-    amount decimal not null,
-    done bit not null,
+    amount decimal(11, 5),
+    done bit,
     primary key(date, paymentId),
     foreign key (paymentId) references Payment on delete cascade on update cascade
 );
@@ -201,7 +194,7 @@ create table NonGucianStudentTakeCourse
 (   
     sid int,
     cid int,
-    grade decimal not null,
+    grade decimal(10,5),
     primary key(sid, cid),
     foreign key(sid) references NonGucianStudent on delete cascade on update cascade,
     foreign key(cid) references Course on delete cascade on update cascade
@@ -251,6 +244,4 @@ create table ThesisHasPublication
     foreign key(serialNo) references Thesis on delete cascade on update cascade,
     foreign key(pubid) references Publication on delete cascade on update cascade
 
-
 );
---EXEC sp_MSforeachtable @command1="DROP TABLE ?"
