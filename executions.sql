@@ -110,6 +110,3 @@ exec ViewExamSupDefense1 @defenseDate='2022/08/10'
 
 go
 
-
-
-
