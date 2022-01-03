@@ -1,5 +1,5 @@
-CREATE DATABASE PostGradDB;
-use PostGradDB
+CREATE DATABASE postgradDB
+use postgradDB
 
 GO
 
@@ -21,13 +21,13 @@ create table Admin
 create table GucianStudent
 (
     id int primary key,
-    first_name varchar(20) not null,
-    last_name varchar(20) not null,
+    firstName varchar(20) not null,
+    lastName varchar(20) not null,
     type varchar(20) not null,
     faculty varchar(20) not null,
     address varchar(50) not null,
     GPA decimal(4,3) not null,
-    undergradID int not null,
+    undergradID int,
     foreign key(id) references PostGradUser on delete cascade on update cascade
 );
 
@@ -37,8 +37,8 @@ create table GucianStudent
 create table NonGucianStudent
 (
     id int primary key,
-    first_name varchar(20) not null,
-    last_name varchar(20) not null,
+    firstName varchar(20) not null,
+    lastName varchar(20) not null,
     type varchar(20) not null,
     faculty varchar(20) not null,
     address varchar(80) not null,
@@ -79,6 +79,15 @@ create table Supervisor
     foreign key(id) references PostGradUser
 );
 
+create table Payment
+(
+    id int primary key identity,
+    amount decimal(11, 5) not null,
+    no_Installments int not null,
+    fundPercentage decimal(6, 3) not null
+);
+
+
 create table Thesis
 (
     serialNumber int primary key,
@@ -105,14 +114,6 @@ create table Publication
     host varchar(30) not null
 );
 
-create table Payment
-(
-    id int primary key identity,
-    amount decimal(11, 5) not null,
-    no_Installments int not null,
-    fundPercentage decimal(6, 3) not null
-);
-
 
 create table Examiner
 (
@@ -129,7 +130,7 @@ create table Defense
     serialNumber int,
     date datetime not null,
     location varchar(50) not null,
-    grade decimal(10, 5) not null,
+    grade decimal(10, 5),
     primary key(serialNumber, date),
     foreign key(serialNumber) references Thesis on delete cascade on update cascade
 );
@@ -140,16 +141,18 @@ create table Defense
 create table GUCianProgressReport
 (
     sid int,
-    no int,
-    date datetime not null,
-    eval int not null,
-    state varchar(20) not null,
+    no int identity,
+    date datetime,
+    eval int check(eval>=0 and eval<=3),
+    state varchar(20),
     thesisSerialNumber int,
     supid int,
+    description varchar(200),
     primary key(sid,no),
     foreign key(thesisSerialNumber) references Thesis on delete cascade on update cascade,
     foreign key (sid) references GucianStudent on delete cascade on update cascade,
     foreign key (supid) references Supervisor on delete cascade on update cascade
+
 );
 
 
@@ -157,12 +160,13 @@ create table GUCianProgressReport
 create table NonGUCianProgressReport
 (
     sid int,
-    no int,
-    date datetime not null,
-    eval int not null,
-    state varchar(20) not null,
+    no int identity,
+    date datetime,
+    eval int check(eval>=0 and eval<=3),
+    state varchar(20),
     thesisSerialNumber int,
     supid int,
+    description varchar(200),
     primary key(sid,no),
     foreign key(thesisSerialNumber) references Thesis on delete cascade on update cascade,
     foreign key (sid) references NonGucianStudent on delete cascade on update cascade,
@@ -211,7 +215,7 @@ create table GUCianStudentRegisterThesis
     foreign key(sid) references GucianStudent on delete cascade on update cascade,
     foreign key(serial_no) references Thesis on delete cascade on update cascade,
     foreign key(supid) references Supervisor on delete cascade on update cascade
-);
+); 
 
 create table NonGUCianStudentRegisterThesis
 (
@@ -229,7 +233,7 @@ create table ExaminerEvaluateDefense
     date datetime,
     serialNo int,
     examinerId int,
-    comment varchar(255),
+    comment varchar(300),
     primary key (date, serialNo, examinerId),
     foreign key(serialNo,date) references Defense on delete cascade on update cascade,
     foreign key(examinerId) references Examiner on delete cascade on update cascade,
