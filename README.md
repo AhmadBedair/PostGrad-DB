@@ -15,7 +15,4 @@ This project was built using the following technologies:
 - [AhmadBedair](https://github.com/AhmadBedair)
 - [Mahmoud-Eldaly](https://github.com/Mahmoud-Eldaly)
 
-
-<p align="center">
-  <h2 align="center">Visitor's Count <img align="center" src="https://profile-counter.glitch.me/open-certs/count.svg" alt="Visitor Count" /></h2>
-</p>
+![Visitor Count](https://profile-counter.glitch.me/amir-ammar/count.svg)
